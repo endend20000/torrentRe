@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html style="height: 100%">
+<head>
+    <title>资源搜索</title>
+
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="expires" content="0">
+    <meta http-equiv="pragma" content="no-cache">
+    <meta http-equiv="cache-control" content="no-cache">
+    <meta http-equiv="cache" content="no-cache">
+
+    <link
+            href="https://maxcdn.bootstrapcdn.com/bootswatch/3.3.7/cerulean/bootstrap.min.css"
+            rel="stylesheet"
+            integrity="sha384-zF4BRsG/fLiTGfR9QL82DrilZxrwgY/+du4p/c7J72zZj+FLYq4zY00RylP9ZjiT"
+            crossorigin="anonymous">
+    <style type="text/css">
+        body {
+            height: 100%;
+          //  background: center 100%;
+            background-color: #b2dba1;
+        }
+
+        div.wrap {
+            height: 100%;
+            width: 100%;
+            overflow-y: scroll;
+        }
+
+        div.content {
+            text-align: center;
+            display: none
+        }
+
+        table.main {
+            min-width: 800px;
+            max-width: 1500px;
+            margin-bottom: 0px;
+            margin: 0 auto
+        }
+
+        .table > thead > tr > th {
+            background-color: #99cdff;
+            text-align: center;
+        }
+
+        .table > tbody > tr:nth-of-type(odd) {
+            background-color: #f9f9f9;
+        }
+
+        .table > tbody > tr:nth-of-type(odd):hover {
+            background-color: #E8E8E8;
+        }
+
+        .table > tbody > tr:nth-of-type(even) {
+            background-color: #d9edf7;
+        }
+
+        .table > tbody > tr:nth-of-type(even):hover {
+            background-color: #C4E3F3;
+        }
+
+        .table > tbody > tr > td.item {
+            width: 10px
+        }
+
+        .table > tbody > tr > td.download {
+            width: 120px
+        }
+
+        footer > ul {
+            margin-top: 0px
+        }
+
+        div.loading {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            display: none
+        }
+
+        .navbar-brand{
+            font-size: small;
+        }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <div class="header" id="navbar">
+        <nav class="navbar navbar-default">
+            <div class="container-fluid">
+                <div class="navbar-header">
+                    <p class="navbar-brand">热搜:</p>
+                    <a class="navbar-brand" href="#" v-on:click.prevent="quickSearch($event)">铁甲城的卡巴里内</a>
+                    <a class="navbar-brand" href="#" v-on:click.prevent="quickSearch($event)">反叛的鲁路修</a>
+                    <a class="navbar-brand" href="#" v-on:click.prevent="quickSearch($event)">高达</a>
+                </div>
+
+            </div>
+            <div class="container-fluid">
+                    <form class="navbar-form navbar-left" role="search" id="form-search" onsubmit="return false">
+                        <div class="form-group">
+                            <input type="text" class="form-control" placeholder="什么都能搜" v-model.trim="searchContent">
+                        </div>
+                        <button type="submit" class="btn btn-default" v-on:click.prevent="search">搜索</button>
+                    </form>
+                </div>
+
+            </div>
+        </nav>
+    </div>
+    <div class="container content" id="div-content" :style="styleContent">
+        <table class="table table-hover main">
+            <!--class="table table-striped table-hover style="filter: Alpha(Opacity=50, Style=3 ); ""background-color:#79f2ff;filter: Alpha(opacity=50) -->
+            <thead>
+            <tr>
+                <th>资源描述</th>
+                <th style="width: 120px">下载热度</th>
+                <th style="width: 120px">文件大小</th>
+                <th style="width: 120px">日期</th>
+                <th style="width: 100px">下载</th>
+            </tr>
+            </thead>
+            <tbody :items=items id="tbody-items">
+
+            <template v-for="item in items">
+                <tr>
+                    <td>{{ item.name}}</td>
+                    <td class="item">{{ item.hot}}</td>
+                    <td class="item">{{ item.size}}</td>
+                    <td class="item">{{ item.time}}</td>
+                    <td class="download" is="item" :item=item></td>
+                    <!-- <td class="download"><a href="javascript:void(0);" onclick="javascript:window.location.href='{{ item.url}}'">磁力链{{ item.url}}</a></td> -->
+                </tr>
+            </template>
+            </tbody>
+        </table>
+
+        <footer style="margin: 0 auto" id="footer-page" v-if="page.visible">
+            <ul class="pagination">
+                <li :class="page.leftClass"><a href="#"
+                                               v-on:click.prevent="lastPage">&laquo;</a></li>
+                <li :class="page.rightClass"><a href="#"
+                                                v-on:click.prevent="nextPage">&raquo;</a></li>
+                <!--class="active"-->
+            </ul>
+        </footer>
+
+    </div>
+
+    <!--;transform: translate(-50%, -50%) v-if="loading" position: absolute;left: 50%; top: 50% -->
+    <div class="loading" id="loading" :style="loadingStyle">
+        <img src="/img/loading.gif"/>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery.js"></script>
+<script
+        src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"
+        integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa"
+        crossorigin="anonymous"></script>
+<script src="https://cdn.bootcss.com/vue/2.5.8/vue.js"></script>
+
+<script>
+
+    function IsPC() {
+        var userAgentInfo = navigator.userAgent;
+        var Agents = new Array("Android", "iPhone", "SymbianOS", "Windows Phone", "iPad", "iPod");
+        var flag = true;
+        for (var v = 0; v < Agents.length; v++) {
+            if (userAgentInfo.indexOf(Agents[v]) > 0) {
+                flag = false;
+                break;
+            }
+        }
+        return flag;
+    }
+
+    if (IsPC()) window.location.href = '/';
+
+    var divLoading = new Vue({
+        el: '#loading',
+        data: {
+            loadingStyle: {display: 'none'}
+        }
+    })
+
+    var divContent = new Vue({
+        el: '#div-content',
+        data: {
+            styleContent: {
+                display: 'none'
+            },
+            items: [],
+            page: {
+                index: 1,
+                size: 30,
+                leftClass: "",
+                rightClass: "",
+                visible: false
+            }
+        },
+        methods: {
+            nextPage: function () {
+                divContent.page.index++;
+                searchContent();
+            },
+            lastPage: function () {
+                divContent.page.index--;
+                searchContent();
+            }
+        }
+    })
+
+    Vue.component('item', {
+            props: ['item'],
+            template: "<td><a href='javascript:void(0);' v-on:click.prevent='download()'>磁力链</a></td>",
+            methods: {
+                download: function () {
+                    if (this.item.type == 1) {
+                        window.location.href = this.item.url;
+                    } else {
+                        $.ajax({
+                            url: "/torrent",    //请求的url地址
+                            dataType: "json",   //返回格式为json
+                            data: {url: this.item.url},    //参数值
+                            type: "get",
+                            success: function (data) {
+                                if (data.status == '1') {
+                                    window.location.href = data.data
+                                } else {
+                                    alert("异常" + req.msg);
+                                }
+                            },
+                            error: function (data) {
+                                alert("请求出错");
+                            }
+                        });
+                    }
+                }
+            }
+        }
+    )
+
+    var searchVue = new Vue({
+        el: '#navbar',
+        data: {searchContent: ''},
+        methods: {
+            search: function () {
+                searchContent();
+            },
+            quickSearch: function (event) {
+                this.searchContent = event.target.text;
+                divContent.page.index = 1;
+                searchContent();
+            }
+        }
+    })
+
+
+    function searchContent() {
+        divLoading.loadingStyle.display = 'block';
+        $.ajax({
+            url: "/data",
+            dataType: "json",
+            data: {
+                keyword: searchVue.searchContent,
+                index: divContent.page.index,
+                size: divContent.page.size
+            },
+            type: "get",
+            success: function (result) {
+                divLoading.loadingStyle.display = 'none';
+                if (result.data.length != 0 || divContent.page.index > 1) {
+                    divContent.page.visible = true;
+
+                    if (result.data.length < divContent.page.size) {
+                        divContent.page.rightClass = 'disabled';
+                    } else {
+                        divContent.page.rightClass = '';
+                    }
+
+                    if (divContent.page.index == 1) {
+                        divContent.page.leftClass = 'disabled';
+                    } else {
+                        divContent.page.leftClass = '';
+                    }
+                } else {
+                    divContent.page.visible = false;
+                }
+                divContent.items = result.data;
+                divContent.styleContent.display = 'block';
+            },
+            error: function (result) {
+                alert('访问出错');
+            }
+        });
+    }
+
+</script>
+</body>
+</html>
